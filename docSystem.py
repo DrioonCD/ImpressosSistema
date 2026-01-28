@@ -219,7 +219,7 @@ class WebDocsGenerator:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>📚 Documentação de Impressos</h1>
+                    <h1>📚 Documentação de Impressos Vitai Care</h1>
                     <p>Total de itens: {len(data_list)} | Gerado em: {datetime.now().strftime('%d/%m/%Y')}</p>
                 </div>
         """
@@ -247,8 +247,13 @@ class WebDocsGenerator:
             """
             
         html_content += """
-            </div></body></html>
+            </div>
+            <footer style="text-align:center; margin-top:40px; padding:10px; font-size:0.9em; color:#555;">
+                #Vitor Correa - Analista de Negócios Vitai
+            </footer>
+        </body></html>
         """
+
         
         # Salvar index.html direto na pasta escolhida
         with open(os.path.join(output_folder, "index.html"), "w", encoding="utf-8") as f:
@@ -451,7 +456,9 @@ class App(ctk.CTk):
             "origem": self.entry_origem.get(),
             "descricao": self.txt_desc.get("1.0", "end-1c"),
             "status": self.combo_status.get(),
-            "image_path": final_path
+            "image_path": final_path,
+            "created_at": datetime.now().isoformat(),
+            "selecionado": 1 # sempre marcado por padrão
         }
 
         if self.editing_item_id:

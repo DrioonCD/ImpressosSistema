@@ -41,7 +41,8 @@ class Database:
                 descricao TEXT,
                 status TEXT,
                 image_path TEXT,
-                created_at TEXT
+                created_at TEXT,
+                selecionado INTEGER DEFAULT 1
             )
         """)
         self.conn.commit()
@@ -49,8 +50,8 @@ class Database:
     def add_item(self, data):
         try:
             self.cursor.execute("""
-                INSERT INTO impressos (id, nome, categoria, origem, descricao, status, image_path, created_at)
-                VALUES (:id, :nome, :categoria, :origem, :descricao, :status, :image_path, :created_at)
+                INSERT INTO impressos (id, nome, categoria, origem, descricao, status, image_path, created_at, selecionado)
+                VALUES (:id, :nome, :categoria, :origem, :descricao, :status, :image_path, :created_at, :selecionado)
             """, data)
             self.conn.commit()
             return True
@@ -63,7 +64,8 @@ class Database:
             self.cursor.execute("""
                 UPDATE impressos 
                 SET nome=:nome, categoria=:categoria, origem=:origem, 
-                    descricao=:descricao, status=:status, image_path=:image_path
+                    descricao=:descricao, status=:status, image_path=:image_path,
+                    selecionado=:selecionado
                 WHERE id=:id
             """, data)
             self.conn.commit()
@@ -71,6 +73,14 @@ class Database:
         except Exception as e:
             print(f"Erro BD Update: {e}")
             return False
+
+    def update_checkbox(self, item_id, selecionado):
+        """Atualiza apenas o campo selecionado (checkbox)"""
+        try:
+            self.cursor.execute("UPDATE impressos SET selecionado=? WHERE id=?", (selecionado, item_id))
+            self.conn.commit()
+        except Exception as e:
+            print(f"Erro BD Update Checkbox: {e}")
 
     def delete_item(self, item_id):
         self.cursor.execute("DELETE FROM impressos WHERE id=?", (item_id,))
@@ -96,6 +106,7 @@ class Database:
 
     def close(self):
         self.conn.close()
+
 
 # --- GERADOR DE PDF ---
 class ReportPDFGenerator:
@@ -168,22 +179,20 @@ class ReportPDFGenerator:
 
 # --- GERADOR DE WEBDOCS (HTML) ---
 class WebDocsGenerator:
-    def generate(self, data_list, output_folder="WebDocs_Sistema"):
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
-        
-        # Copiar imagens para pasta web
+    def generate(self, data_list, output_folder="."):
+        # Criar pasta de imagens direto na raiz escolhida
         images_web_folder = os.path.join(output_folder, "images")
         if not os.path.exists(images_web_folder):
             os.makedirs(images_web_folder)
             
+        # Copiar imagens para a pasta "images"
         for item in data_list:
             if item['image_path'] and os.path.exists(item['image_path']):
                 dest = os.path.join(images_web_folder, os.path.basename(item['image_path']))
                 if not os.path.exists(dest):
                     shutil.copy(item['image_path'], dest)
 
-        # Gerar Index.html
+        # Gerar index.html direto na raiz escolhida
         html_content = f"""
         <!DOCTYPE html>
         <html lang="pt-br">
@@ -241,10 +250,12 @@ class WebDocsGenerator:
             </div></body></html>
         """
         
+        # Salvar index.html direto na pasta escolhida
         with open(os.path.join(output_folder, "index.html"), "w", encoding="utf-8") as f:
             f.write(html_content)
         
         return os.path.abspath(os.path.join(output_folder, "index.html"))
+
 
 # --- APLICAÇÃO PRINCIPAL ---
 class App(ctk.CTk):
@@ -290,7 +301,7 @@ class App(ctk.CTk):
         
         # ComboBox Status
         ctk.CTkLabel(self.left_frame, text="Status Estratégico:", anchor="w").pack(fill="x", padx=20, pady=(5,0))
-        self.combo_status = ctk.CTkComboBox(self.left_frame, values=["Ativo", "Migrar para BI", "Obsoleto", "Redundante", "Revisar"])
+        self.combo_status = ctk.CTkComboBox(self.left_frame, values=["Ativo", "Migrar para BI", "Administrativo", "Obsoleto", "Redundante", "Revisar"])
         self.combo_status.pack(fill="x", padx=20, pady=5)
         
         self.entry_origem = self.create_input("Origem (Caminho Menu):")
@@ -441,6 +452,8 @@ class App(ctk.CTk):
             "descricao": self.txt_desc.get("1.0", "end-1c"),
             "status": self.combo_status.get(),
             "image_path": final_path
+            "created_at": datetime.now().isoformat(),
+            "selecionado": 1 # sempre marcado por padrão
         }
 
         if self.editing_item_id:
@@ -485,9 +498,10 @@ class App(ctk.CTk):
             row.pack(fill="x", pady=2, padx=2)
 
             # Checkbox
-            var = ctk.BooleanVar(value=True)
+            var = ctk.BooleanVar(value=bool(item.get('selecionado', 1)))
             self.check_vars[item['id']] = var
-            ctk.CTkCheckBox(row, text="", variable=var, width=20).pack(side="left", padx=5)
+            ctk.CTkCheckBox(row, text="", variable=var, width=20, 
+                            command=lambda i=item, v=var: self.db.update_checkbox(i['id'], 1 if v.get() else 0)).pack(side="left", padx=5)
 
             # Info
             info = ctk.CTkFrame(row, fg_color="transparent")
