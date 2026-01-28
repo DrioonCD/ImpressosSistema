@@ -1,0 +1,11 @@
+[
+    {
+        "id": "20260127163401",
+        "nome": "Classificação de Risco",
+        "categoria": "Classificação de Risco",
+        "origem": "classificacaoDeRisco.do",
+        "descricao": "Nome do programa: Classificação de risco atendimento\n\nImpresso de classificação de risco gerado após etapa de classificação.\n\nPodendo ser gerado na exportação de prontuário e também no programa Prontuário Eletronico (prescricao.do).",
+        "image_path": "images_storage\\img_20260127_163401.png",
+        "selected": true
+    }
+]
